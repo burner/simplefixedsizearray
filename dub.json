@@ -1,0 +1,9 @@
+{
+	"name": "simplefixedsizearray",
+	"authors": [
+		"burner"
+	],
+	"description": "A simple fixed size array",
+	"copyright": "Copyright © 2018, burner",
+	"license": "LGPL3"
+}

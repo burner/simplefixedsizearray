@@ -21,4 +21,14 @@ __dummy.html
 docs/
 
 # Code coverage
+=======
+simplefixedsizearray.so
+simplefixedsizearray.dylib
+simplefixedsizearray.dll
+simplefixedsizearray.a
+simplefixedsizearray.lib
+simplefixedsizearray-test-*
+*.exe
+*.o
+*.obj
 *.lst
