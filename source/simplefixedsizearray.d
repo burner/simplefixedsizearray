@@ -253,8 +253,29 @@ unittest {
 		assert(r.length == 10 - i);
 		auto f = r.front;
 		foreach(it; i .. 10) {
-			//writefln!"%d %d"(r[it - i], it);
 			assert(r[it - i] == it);
+		}
+	}
+}
+
+unittest {
+	import std.stdio;
+	SFA!(int) a;
+	foreach(it; 0 .. 10) {
+		a.insertBack(it);
+		assert(a.length == it + 1);
+	}
+
+	auto r = a[];
+	foreach(it; 0 .. 10) {		// Slice.opIndex
+		assert(r[it] == it);
+	}
+
+	for(size_t i = 0; !r.empty; r.popBack(), ++i) {
+		assert(r.length == 10 - i);
+		auto f = r.back;
+		for(int it = 9; it >= 0; --it) {
+			assert(r[it] == it);
 		}
 	}
 }
