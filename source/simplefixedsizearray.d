@@ -4,7 +4,14 @@ struct SFA(T,size_t Size = 32) {
 	static assert(Size > 0);
 	import std.traits : CopyTypeQualifiers, hasElaborateDestructor, hasMember;
 
-	size_t length;
+	static if(Size <= ubyte.max) {
+		ubyte length_;
+	} else static if(Size <= ushort.max) {
+		ushort length_;
+	} else {
+		size_t length_;
+	}
+
 	ubyte[T.sizeof * Size] store;
 
 	~this() {
@@ -32,11 +39,11 @@ struct SFA(T,size_t Size = 32) {
 		}
 
 		@property ref U back() {
-			return (*this.ptr)[this.high];
+			return (*this.ptr)[this.high - 1];
 		}
 
 		ref T opIndex(const size_t idx) {
-			return (*this.fsa)[this.low + idx];
+			return (*this.ptr)[this.low + idx];
 		}
 
 		void popFront() pure @safe nothrow @nogc {
@@ -54,12 +61,20 @@ struct SFA(T,size_t Size = 32) {
 
 	SFARange!(typeof(this), CopyTypeQualifiers!(S,T)) opSlice(this S)(size_t low, size_t high) {
 		assert(low <= high);
-		assert(low <= this.length);
+		assert(low <= this.length_);
 		return typeof(return)(&this, low, high);
 	}
 
+	SFARange!(typeof(this), CopyTypeQualifiers!(S,T)) opSlice(this S)() {
+		return typeof(return)(&this, 0U, this.length);
+	}
+
+	@property size_t length() const @safe pure nothrow @nogc {
+		return cast(size_t)this.length_;
+	}
+
 	@property bool empty() const @safe @nogc nothrow {
-		return this.length == 0U;
+		return this.length_ == 0U;
 	}
 
 	@property bool hasCapacity() const @safe @nogc nothrow {
@@ -69,7 +84,7 @@ struct SFA(T,size_t Size = 32) {
 	void insertBack(T t) {
 		assert(this.length + 1 <= Size);
 		*(cast(T*)(&this.store[cast(size_t)(this.length * T.sizeof)])) = t;
-		++length;
+		++this.length_;
 	}
 
 	ref CopyTypeQualifiers!(S,T) opIndex(this S)(size_t idx) {
@@ -108,7 +123,7 @@ struct SFA(T,size_t Size = 32) {
 			}
 		}
 
-		--this.length;
+		--this.length_;
 	}
 
 	void remove(size_t idx) {
@@ -127,7 +142,7 @@ struct SFA(T,size_t Size = 32) {
 			this.store[i] = this.store[i + T.sizeof];
 		}
 
-		--this.length;
+		--this.length_;
 	}
 }
 
@@ -156,6 +171,8 @@ unittest {
 	}
 
 	void test(size_t Size, T)() {
+		static import std.algorithm;
+		import std.stdio;
 		SFA!(T, Size) a;
 		assert(a.empty);
 		foreach(it; 0 .. Size) {
@@ -169,14 +186,30 @@ unittest {
 				assert(a[jt] == jt);
 			}
 
-			auto r = a[0 .. a.length - 1];
+			auto r = a[0 .. a.length];
+			auto r2 = r.save();
+
+			//writefln!"%d %d"(r.low, r.high);
+			assert(!r.empty);
 			assert(r.front == 0);
 			assert(r.back == it);
+
+			size_t idx = 0;
+			foreach(jt; r) {
+				assert(jt == idx);
+				++idx;
+			}
+
+			idx = it;
+			foreach_reverse(jt; r2) {
+				assert(jt == idx);
+				--idx;
+			}
 		}
 		assert(!a.hasCapacity);
 	}
 
-	static foreach(tSize; [1,2,3,4,5,10,11,32,63,64]) {
+	static foreach(tSize; [1,2,3,4,5,10,11,32,63,64,256]) {
 		test!(tSize, size_t)();
 		test!(tSize, Foo)();
 	}
@@ -201,4 +234,27 @@ unittest {
 	a.insertBack(1337);
 	a.remove(0);
 	assert(a.empty);
+}
+
+unittest {
+	import std.stdio;
+	SFA!(int) a;
+	foreach(it; 0 .. 10) {
+		a.insertBack(it);
+		assert(a.length == it + 1);
+	}
+
+	auto r = a[];
+	foreach(it; 0 .. 10) {		// Slice.opIndex
+		assert(r[it] == it);
+	}
+
+	for(size_t i = 0; !r.empty; r.popFront(), ++i) {
+		assert(r.length == 10 - i);
+		auto f = r.front;
+		foreach(it; i .. 10) {
+			//writefln!"%d %d"(r[it - i], it);
+			assert(r[it - i] == it);
+		}
+	}
 }
